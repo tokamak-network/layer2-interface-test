@@ -1,11 +1,6 @@
 {
-<<<<<<< Updated upstream
   "name": "tokamak-layer-sdk",
   "version": "1.0.0",
-=======
-  "name": "TosV2-layer-sdk",
-  "version": "1.0.1",
->>>>>>> Stashed changes
   "description": "",
   "main": "index.js",
   "scripts": {
