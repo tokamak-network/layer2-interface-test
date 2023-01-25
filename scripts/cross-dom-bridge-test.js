@@ -193,11 +193,6 @@ const withdrawERC20 = async () => {
 
 const main = async () => {
     await setup()
-<<<<<<< Updated upstream:scripts/cross-dom-bridge-erc20.js
-    // await reportERC20Balances()
-    await depositERC20()
-    // await withdrawERC20()
-=======
 
     let boolERC20Deposit = true;
     let boolERC20Withdraw = false;
@@ -216,7 +211,6 @@ const main = async () => {
     if (boolMessageTest) {
       await communicationMessage();
     }
->>>>>>> Stashed changes:scripts/cross-dom-bridge-test.js
 }  // main
 
 main().then(() => process.exit(0))
