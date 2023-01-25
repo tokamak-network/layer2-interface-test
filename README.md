@@ -1,6 +1,9 @@
 # tokamak-layer-sdk
 
+npm i -s @zena-park/tokamak-sdk
+
 Replaced @eth-optimism/sdk with @zena-park/tokamak-sdk for use the tokamak goerli network,
+
 
 // const optimismSDK = require("@eth-optimism/sdk")
 const optimismSDK = require("@zena-park/tokamak-sdk")
