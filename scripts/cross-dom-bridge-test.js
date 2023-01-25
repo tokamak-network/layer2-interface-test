@@ -8,6 +8,11 @@ const optimismSDK = require("@zena-park/tokamak-sdk")
 
 require('dotenv').config()
 
+const MessageDirection = {
+  L1_TO_L2: 0,
+  L2_TO_L1: 1,
+}
+
 const l1Url = `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY}`
 const l2Url = `https://goerli.optimism.tokamak.network`
 
@@ -24,6 +29,11 @@ const erc20Addrs = {
   l1Addr: "0x68c1F9620aeC7F2913430aD6daC1bb16D8444F00",
   l2Addr: "0x7c6b91D9Be155A6Db01f749217d76fF02A7227F2"
 }    // erc20Addrs
+
+const greeter = {
+  l1Greeter: "0x51aB33d511a74aBeFDce2d4AddB92991B73F8937",
+  l2Greeter: "0xDe6b80f4700C2148Ba2aF81640a23E153C007C7F"
+}
 
 // To learn how to deploy an L2 equivalent to an L1 ERC-20 contract,
 // see here:
@@ -82,7 +92,57 @@ const erc20ABI = [
   }
 ]    // erc20ABI
 
+const BridgeABI = [
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "deposits",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
 
+const GreeterABI = [
+  {
+    "inputs": [
+    ],
+    "name": "greet",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    constant: true,
+    inputs: [
+      { name: "_greeting", type: "string" } ],
+    name: "setGreeting",
+    outputs: [],
+    type: "function",
+  },
+]
 const setup = async() => {
   const [l1Signer, l2Signer] = await getSigners()
   ourAddr = l1Signer.address
@@ -96,9 +156,34 @@ const setup = async() => {
 
   // console.log('crossChainMessenger',crossChainMessenger);
 
+  l1Bridge = new ethers.Contract(bridge.l1Bridge, BridgeABI, l1Signer)
   l1ERC20 = new ethers.Contract(erc20Addrs.l1Addr, erc20ABI, l1Signer)
   l2ERC20 = new ethers.Contract(erc20Addrs.l2Addr, erc20ABI, l2Signer)
+  l1Greeter = new ethers.Contract(greeter.l1Greeter, GreeterABI, l1Signer)
+  l2Greeter = new ethers.Contract(greeter.l2Greeter, GreeterABI, l2Signer)
+
 }    // setup
+
+
+const reportGreet = async () => {
+  const l1greet = await l1Greeter["greet()"]()
+  const l2greet = await l2Greeter.greet()
+
+  console.log(`l1greet:${l1greet} `)
+  console.log(`l2greet:${l2greet} `)
+
+  return
+}    // reportGreet
+
+
+const reportBridgeBalances = async () => {
+
+  const deposits = (await l1Bridge.deposits(erc20Addrs.l1Addr, erc20Addrs.l2Addr)).toString().slice(0,-18)
+
+  console.log(`deposits in Bridge : ${deposits} `)
+  return
+
+}    // reportBridgeBalances
 
 
 const reportERC20Balances = async () => {
@@ -121,7 +206,7 @@ const reportERC20Balances = async () => {
   const newBalance = (await l1ERC20.balanceOf(ourAddr)).toString().slice(0,-18)
   console.log(`New L1 OUTb balance: ${newBalance}`)
   */
-}    // reportERC20Balances
+}    // reportGreet
 
 
 const oneToken = BigInt(1e18)
@@ -130,9 +215,10 @@ const depositAmount = ethers.utils.parseEther("1")
 
 
 const depositERC20 = async () => {
-
+  console.log(`\n`)
   console.log("Deposit ERC20")
   await reportERC20Balances()
+  console.log(`\n`)
   const start = new Date()
 
   // Need the l2 address to know which bridge is responsible
@@ -142,7 +228,7 @@ const depositERC20 = async () => {
   console.log(`Allowance given by tx ${allowanceResponse.hash}`)
   console.log(`\tMore info: https://goerli.etherscan.io/tx/${allowanceResponse.hash}`)
   console.log(`Time so far ${(new Date()-start)/1000} seconds`)
-
+  console.log(`\n`)
   const response = await crossChainMessenger.depositERC20(
     erc20Addrs.l1Addr, erc20Addrs.l2Addr, depositAmount)
   console.log(`Deposit transaction hash (on L1): ${response.hash}`)
@@ -150,53 +236,115 @@ const depositERC20 = async () => {
   await response.wait()
   console.log("Waiting for status to change to RELAYED")
   console.log(`Time so far ${(new Date()-start)/1000} seconds`)
-  await crossChainMessenger.waitForMessageStatus(response.hash,
-                                                  optimismSDK.MessageStatus.RELAYED)
+  await crossChainMessenger.waitForMessageStatus(response.hash, optimismSDK.MessageStatus.RELAYED)
 
-  await reportERC20Balances()
   console.log(`depositERC20 took ${(new Date()-start)/1000} seconds\n\n`)
+  await reportERC20Balances()
+  console.log(`\n`)
 
 }     // depositERC20()
 
 
 const withdrawERC20 = async () => {
-
+  console.log(`\n`)
   console.log("Withdraw ERC20")
   const start = new Date()
   await reportERC20Balances()
+  console.log(`\n`)
 
   const response = await crossChainMessenger.withdrawERC20(
     erc20Addrs.l1Addr, erc20Addrs.l2Addr, depositAmount)
   console.log(`Transaction hash (on L2): ${response.hash}`)
   console.log(`\tFor more information: https://goerli.explorer.tokamak.network/tx/${response.hash}`)
   await response.wait()
-
+  console.log(`\n`)
   console.log("Waiting for status to change to IN_CHALLENGE_PERIOD")
   console.log(`Time so far ${(new Date()-start)/1000} seconds`)
-  await crossChainMessenger.waitForMessageStatus(response.hash,
-    optimismSDK.MessageStatus.IN_CHALLENGE_PERIOD)
+  await crossChainMessenger.waitForMessageStatus(response.hash, optimismSDK.MessageStatus.IN_CHALLENGE_PERIOD)
   console.log("In the challenge period, waiting for status READY_FOR_RELAY")
   console.log(`Time so far ${(new Date()-start)/1000} seconds`)
-  await crossChainMessenger.waitForMessageStatus(response.hash,
-                                                optimismSDK.MessageStatus.READY_FOR_RELAY)
+  await crossChainMessenger.waitForMessageStatus(response.hash, optimismSDK.MessageStatus.READY_FOR_RELAY)
   console.log("Ready for relay, finalizing message now")
   console.log(`Time so far ${(new Date()-start)/1000} seconds`)
   await crossChainMessenger.finalizeMessage(response)
   console.log("Waiting for status to change to RELAYED")
   console.log(`Time so far ${(new Date()-start)/1000} seconds`)
-  await crossChainMessenger.waitForMessageStatus(response,
-    optimismSDK.MessageStatus.RELAYED)
-  await reportERC20Balances()
+  await crossChainMessenger.waitForMessageStatus(response, optimismSDK.MessageStatus.RELAYED)
+
   console.log(`withdrawERC20 took ${(new Date()-start)/1000} seconds\n\n\n`)
 
+  await reportERC20Balances()
 }     // withdrawERC20()
+
+
+const communicationMessage = async () => {
+  const [l1Signer, l2Signer] = await getSigners()
+  console.log(`\n`)
+
+  await reportGreet()
+  const start = new Date()
+
+  let iface = new ethers.utils.Interface(GreeterABI);
+
+  // Need the l2 address to know which bridge is responsible
+  const sendMessageResponse = await crossChainMessenger.sendMessage(
+    {
+      direction: MessageDirection.L1_TO_L2,
+      target: l2Greeter.address,
+      message: iface.encodeFunctionData("setGreeting(string)", ['Hello           , L1_TO_L2,' +  new Date()])
+    },{
+      l2GasLimit: 200000
+    }
+  );
+  await sendMessageResponse.wait()
+  console.log(`SendMessage given by tx ${sendMessageResponse.hash}`)
+  console.log(`\tMore info: https://goerli.etherscan.io/tx/${sendMessageResponse.hash}`)
+  console.log(`Time so far ${(new Date()-start)/1000} seconds`)
+
+  console.log(`\n`)
+  await crossChainMessenger.waitForMessageStatus(sendMessageResponse.hash, optimismSDK.MessageStatus.RELAYED)
+  console.log(`RELAYED, Time so far ${(new Date()-start)/1000} seconds`)
+
+  await reportGreet()
+  console.log(`\n`)
+
+  const start1 = new Date()
+  const response = await crossChainMessenger.sendMessage(
+    {
+      direction: MessageDirection.L2_TO_L1,
+      target: l1Greeter.address,
+      message: iface.encodeFunctionData("setGreeting(string)",['Nice To Meet You, L2_TO_L1,' +  new Date()])
+    }
+  )
+  console.log(`Reply transaction hash (on L1): ${response.hash}`)
+  console.log(`\tMore info: https://goerli.etherscan.io/tx/${response.hash}`)
+
+  await response.wait()
+  console.log("Waiting for status to change to RELAYED")
+  console.log(`Time so far ${(new Date()-start1)/1000} seconds`)
+
+  await crossChainMessenger.waitForMessageStatus(response.hash, optimismSDK.MessageStatus.RELAYED)
+  console.log(`RELAYED, Time so far ${(new Date()-start1)/1000} seconds`)
+
+  console.log(`\n`)
+
+  await reportGreet()
+  // console.log(`\n`)
+  // console.log(`communicationMessage took ${(new Date ()-start)/1000} seconds\n\n`)
+
+}     // communicationMessage()
+
 
 const main = async () => {
     await setup()
 
-    let boolERC20Deposit = true;
-    let boolERC20Withdraw = false;
-    let boolMessageTest = false;
+    let boolERC20Deposit = process.env.testERC20Deposit;
+    let boolERC20Withdraw = process.env.testERC20Withdraw;
+    let boolMessageTest = process.env.testMessageTest;
+
+    console.log(`\n boolERC20Deposit `,boolERC20Deposit)
+    console.log(`\n boolERC20Withdraw `, boolERC20Withdraw)
+    console.log(`\n boolMessageTest`, boolMessageTest, `\n`)
 
     if (boolERC20Deposit) {
       await reportBridgeBalances();
