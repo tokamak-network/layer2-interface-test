@@ -1,6 +1,11 @@
 {
+<<<<<<< Updated upstream
   "name": "tokamak-layer-sdk",
   "version": "1.0.0",
+=======
+  "name": "TosV2-layer-sdk",
+  "version": "1.0.1",
+>>>>>>> Stashed changes
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -27,6 +32,7 @@
     "@ethersproject/rlp": "^5.7.0",
     "@ethersproject/transactions": "^5.7.0",
     "@ethersproject/web": "^5.7.1",
+    "@zena-park/tokamak-sdk": "^1.0.2",
     "assert": "^2.0.0",
     "bufio": "^1.2.0",
     "chai": "^4.3.7",
