@@ -8,6 +8,9 @@ const optimismSDK = require("@zena-park/tokamak-sdk")
 const IERC20Artifact = require("./abis/IERC20.json");
 require('dotenv').config()
 
+// 1. withdraw 할때, 원하는 이벤트가 정상적으로 들어왔는지 체크하면 된다.
+// 2. 해쉬가 맞는지 체크해야 한다.
+
 const MessageDirection = {
   L1_TO_L2: 0,
   L2_TO_L1: 1,
@@ -15,6 +18,8 @@ const MessageDirection = {
 
 const l1Url = `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY}`
 const l2Url = `https://goerli.optimism.tokamak.network`
+const receiver1 = "0x5b6e72248b19F2c5b88A4511A6994AD101d0c287"; // 계정1
+
 
 // Contract addresses for OPTb tokens, taken
 // from https://github.com/ethereum-optimism/ethereum-optimism.github.io/blob/master/data/OUTb/data.json
@@ -25,16 +30,16 @@ const bridge = {
 }
 
 // TOS
-const erc20Addrs = {
-  l1Addr: "0x67F3bE272b1913602B191B3A68F7C238A2D81Bb9",
-  l2Addr: "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb"
-}
-
-// // TON
 // const erc20Addrs = {
-//   l1Addr: "0x68c1F9620aeC7F2913430aD6daC1bb16D8444F00",
-//   l2Addr: "0x7c6b91D9Be155A6Db01f749217d76fF02A7227F2"
+//   l1Addr: "0x67F3bE272b1913602B191B3A68F7C238A2D81Bb9",
+//   l2Addr: "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb"
 // }
+
+// TON
+const erc20Addrs = {
+  l1Addr: "0x68c1F9620aeC7F2913430aD6daC1bb16D8444F00",
+  l2Addr: "0x7c6b91D9Be155A6Db01f749217d76fF02A7227F2"
+}
 
 // USDC
 // const erc20Addrs = {
@@ -169,6 +174,7 @@ const setup = async() => {
   // console.log('crossChainMessenger',crossChainMessenger);
 
   l1Bridge = new ethers.Contract(bridge.l1Bridge, BridgeABI, l1Signer)
+  l2Bridge = new ethers.Contract(bridge.l2Bridge, BridgeABI, l2Signer)
   l1ERC20 = new ethers.Contract(erc20Addrs.l1Addr, IERC20Artifact.abi, l1Signer)
   l2ERC20 = new ethers.Contract(erc20Addrs.l2Addr, IERC20Artifact.abi, l2Signer)
   l1Greeter = new ethers.Contract(greeter.l1Greeter, GreeterABI, l1Signer)
@@ -193,8 +199,6 @@ const reportBridgeBalances = async () => {
   // const deposits = (await l1Bridge.deposits(erc20Addrs.l1Addr, erc20Addrs.l2Addr)).toString()
 
   console.log(`deposits in Bridge : ${deposits} `)
-
-
   return
 
 }    // reportBridgeBalances
@@ -213,23 +217,14 @@ const reportERC20Balances = async () => {
     return
   }
 
-  /*
-  console.log(`You don't have enough OUTb on L1. Let's call the faucet to fix that`)
-  const tx = (await l1ERC20.faucet())
-  console.log(`Faucet tx: ${tx.hash}`)
-  console.log(`\tMore info: https://goerli.etherscan.io/tx/${tx.hash}`)
-  await tx.wait()
-  const newBalance = (await l1ERC20.balanceOf(ourAddr)).toString().slice(0,-18)
-  console.log(`New L1 OUTb balance: ${newBalance}`)
-  */
 }    // reportGreet
 
 
 const oneToken = BigInt(1e18)
 // const tenToken = ethers.utils.parseEther("10 ")
 
-const depositAmount = ethers.utils.parseEther("60000")
-// const depositAmount = ethers.utils.parseEther("1")
+// const depositAmount = ethers.utils.parseEther("60000")
+const depositAmount = ethers.utils.parseEther("1")
 const approveAmount = ethers.utils.parseEther("100000")
 
 // for USDC
@@ -296,7 +291,7 @@ const depositERC20 = async () => {
 }     // depositERC20()
 
 
-const withdrawERC20 = async () => {
+const withdrawERC20 = async (to) => {
   console.log(`\n`)
   console.log("Withdraw ERC20")
   const start = new Date()
@@ -304,7 +299,9 @@ const withdrawERC20 = async () => {
   console.log(`\n`)
 
   const response = await crossChainMessenger.withdrawERC20(
-    erc20Addrs.l1Addr, erc20Addrs.l2Addr, depositAmount)
+    erc20Addrs.l1Addr, erc20Addrs.l2Addr, depositAmount,
+
+    )
   console.log(`Transaction hash (on L2): ${response.hash}`)
   console.log(`\tFor more information: https://goerli.explorer.tokamak.network/tx/${response.hash}`)
   await response.wait()
@@ -328,75 +325,15 @@ const withdrawERC20 = async () => {
 }     // withdrawERC20()
 
 
-const communicationMessage = async () => {
-  const [l1Signer, l2Signer] = await getSigners()
-  console.log(`\n`)
-
-  await reportGreet()
-  const start = new Date()
-
-  let iface = new ethers.utils.Interface(GreeterABI);
-
-  // Need the l2 address to know which bridge is responsible
-  const sendMessageResponse = await crossChainMessenger.sendMessage(
-    {
-      direction: MessageDirection.L1_TO_L2,
-      target: l2Greeter.address,
-      message: iface.encodeFunctionData("setGreeting(string)", ['Hello           , L1_TO_L2,' +  new Date()])
-    },{
-      l2GasLimit: 200000
-    }
-  );
-  await sendMessageResponse.wait()
-  console.log(`SendMessage given by tx ${sendMessageResponse.hash}`)
-  console.log(`\tMore info: https://goerli.etherscan.io/tx/${sendMessageResponse.hash}`)
-  console.log(`Time so far ${(new Date()-start)/1000} seconds`)
-
-  console.log(`\n`)
-  await crossChainMessenger.waitForMessageStatus(sendMessageResponse.hash, optimismSDK.MessageStatus.RELAYED)
-  console.log(`RELAYED, Time so far ${(new Date()-start)/1000} seconds`)
-
-  await reportGreet()
-  console.log(`\n`)
-
-  const start1 = new Date()
-  const response = await crossChainMessenger.sendMessage(
-    {
-      direction: MessageDirection.L2_TO_L1,
-      target: l1Greeter.address,
-      message: iface.encodeFunctionData("setGreeting(string)",['Nice To Meet You, L2_TO_L1,' +  new Date()])
-    }
-  )
-
-  console.log(`Reply transaction hash (on L1): ${response.hash}`)
-  console.log(`\tMore info: https://goerli.etherscan.io/tx/${response.hash}`)
-
-  await response.wait()
-  console.log("Waiting for status to change to RELAYED")
-  console.log(`Time so far ${(new Date()-start1)/1000} seconds`)
-
-  await crossChainMessenger.waitForMessageStatus(response.hash, optimismSDK.MessageStatus.RELAYED)
-  console.log(`RELAYED, Time so far ${(new Date()-start1)/1000} seconds`)
-
-  console.log(`\n`)
-
-  await reportGreet()
-  // console.log(`\n`)
-  // console.log(`communicationMessage took ${(new Date ()-start)/1000} seconds\n\n`)
-
-}     // communicationMessage()
-
 
 const main = async () => {
     await setup()
 
     let boolERC20Deposit = process.env.testERC20Deposit;
     let boolERC20Withdraw = process.env.testERC20Withdraw;
-    let boolMessageTest = process.env.testMessageTest;
 
     console.log(`\n boolERC20Deposit `,boolERC20Deposit)
     console.log(`\n boolERC20Withdraw `, boolERC20Withdraw)
-    console.log(`\n boolMessageTest`, boolMessageTest, `\n`)
 
     if (boolERC20Deposit) {
       // await allowanceERC20()
@@ -407,11 +344,13 @@ const main = async () => {
       await depositERC20()
       await reportBridgeBalances();
     }
-    // if (boolERC20Withdraw) {
-    //    await reportBridgeBalances();
-    //    await withdrawERC20()
-    //    await reportBridgeBalances();
-    // }
+
+    if (boolERC20Withdraw) {
+       await reportBridgeBalances();
+       await withdrawERC20()
+       await reportBridgeBalances();
+    }
+
     // if (boolMessageTest) {
     //   await communicationMessage();
     // }
