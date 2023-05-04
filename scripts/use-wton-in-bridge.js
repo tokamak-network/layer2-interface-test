@@ -6,6 +6,8 @@ const ethers = require("ethers")
 // const optimismSDK = require("@eth-optimism/sdk")
 const optimismSDK = require("@zena-park/tokamak-sdk")
 const IERC20Artifact = require("./abis/IERC20.json");
+const IL2ERC20Artifact = require("./abis/L2StandardERC20.json");
+
 require('dotenv').config()
 
 const MessageDirection = {
@@ -104,6 +106,13 @@ const erc20ABI = [
     outputs: [],
     stateMutability: "nonpayable",
     type: "function"
+  },
+  {
+    inputs: [],
+    name: "name",
+    outputs: [{ name: "", type: "string" }],
+    stateMutability: "nonpayable",
+    type: "function"
   }
 ]    // erc20ABI
 
@@ -149,7 +158,7 @@ const setup = async() => {
 
   l1Bridge = new ethers.Contract(bridge.l1Bridge, BridgeABI, l1Signer)
   l1ERC20 = new ethers.Contract(erc20Addrs.l1Addr, IERC20Artifact.abi, l1Signer)
-  l2ERC20 = new ethers.Contract(erc20Addrs.l2Addr, IERC20Artifact.abi, l2Signer)
+  l2ERC20 = new ethers.Contract(erc20Addrs.l2Addr, IL2ERC20Artifact.abi, l2Signer)
 
 }    // setup
 
@@ -172,6 +181,11 @@ const reportERC20Balances = async () => {
 
   console.log(`ourAddr:${ourAddr} `)
   console.log(`OUTb on L1:${l1Balance}     OUTb on L2:${l2Balance}`)
+
+  let l2symbol = await l2ERC20.symbol()
+  let l2decimals = await l2ERC20.decimals()
+  console.log(`l2symbol:${l2symbol} `)
+  console.log(`l2decimals:${l2decimals} `)
 
   if (l1Balance != 0) {
     return
