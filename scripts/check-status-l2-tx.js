@@ -6,9 +6,10 @@ const ethers = require("ethers")
 // const optimismSDK = require("@eth-optimism/sdk")
 const optimismSDK = require("@zena-park/tokamak-sdk")
 const IERC20Artifact = require("./abis/IERC20.json");
-const IL2ERC20Artifact = require("./abis/L2StandardERC20.json");
-
 require('dotenv').config()
+
+// 1. withdraw 할때, 원하는 이벤트가 정상적으로 들어왔는지 체크하면 된다.
+// 2. 해쉬가 맞는지 체크해야 한다.
 
 const MessageDirection = {
   L1_TO_L2: 0,
@@ -17,6 +18,8 @@ const MessageDirection = {
 
 const l1Url = `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY}`
 const l2Url = `https://goerli.optimism.tokamak.network`
+const receiver1 = "0x5b6e72248b19F2c5b88A4511A6994AD101d0c287"; // 계정1
+
 
 // Contract addresses for OPTb tokens, taken
 // from https://github.com/ethereum-optimism/ethereum-optimism.github.io/blob/master/data/OUTb/data.json
@@ -26,31 +29,28 @@ const bridge = {
   l2Bridge: "0x4200000000000000000000000000000000000010"
 }
 
-const tokenDecimal = -27;
-
-// WTON
-const erc20Addrs = {
-    l1Addr: "0xe86fCf5213C785AcF9a8BFfEeDEfA9a2199f7Da6",
-    l2Addr: "0x741cDf6f39668AAC56F93dDdcbF53C51b8B8Bfc4"
-  }
-
 // TOS
 // const erc20Addrs = {
 //   l1Addr: "0x67F3bE272b1913602B191B3A68F7C238A2D81Bb9",
 //   l2Addr: "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb"
 // }
 
-// // TON
-// const erc20Addrs = {
-//   l1Addr: "0x68c1F9620aeC7F2913430aD6daC1bb16D8444F00",
-//   l2Addr: "0x7c6b91D9Be155A6Db01f749217d76fF02A7227F2"
-// }
+// TON
+const erc20Addrs = {
+  l1Addr: "0x68c1F9620aeC7F2913430aD6daC1bb16D8444F00",
+  l2Addr: "0x7c6b91D9Be155A6Db01f749217d76fF02A7227F2"
+}
 
 // USDC
 // const erc20Addrs = {
 //   l1Addr: "0x07865c6e87b9f70255377e024ace6630c1eaa37f",
 //   l2Addr: "0x713733bda7F5f9C15fd164242dF4d6292B412bAE"
 // }
+
+const greeter = {
+  l1Greeter: "0x51aB33d511a74aBeFDce2d4AddB92991B73F8937",
+  l2Greeter: "0xDe6b80f4700C2148Ba2aF81640a23E153C007C7F"
+}
 
 // To learn how to deploy an L2 equivalent to an L1 ERC-20 contract,
 // see here:
@@ -106,13 +106,6 @@ const erc20ABI = [
     outputs: [],
     stateMutability: "nonpayable",
     type: "function"
-  },
-  {
-    inputs: [],
-    name: "name",
-    outputs: [{ name: "", type: "string" }],
-    stateMutability: "nonpayable",
-    type: "function"
   }
 ]    // erc20ABI
 
@@ -143,6 +136,30 @@ const BridgeABI = [
   }
 ]
 
+const GreeterABI = [
+  {
+    "inputs": [
+    ],
+    "name": "greet",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    constant: true,
+    inputs: [
+      { name: "_greeting", type: "string" } ],
+    name: "setGreeting",
+    outputs: [],
+    type: "function",
+  },
+]
 const setup = async() => {
   [l1Signer, l2Signer] = await getSigners()
   ourAddr = l1Signer.address
@@ -157,15 +174,29 @@ const setup = async() => {
   // console.log('crossChainMessenger',crossChainMessenger);
 
   l1Bridge = new ethers.Contract(bridge.l1Bridge, BridgeABI, l1Signer)
-  l1ERC20 = new ethers.Contract(erc20Addrs.l1Addr, IL2ERC20Artifact.abi, l1Signer)
-  l2ERC20 = new ethers.Contract(erc20Addrs.l2Addr, IL2ERC20Artifact.abi, l2Signer)
+  l2Bridge = new ethers.Contract(bridge.l2Bridge, BridgeABI, l2Signer)
+  l1ERC20 = new ethers.Contract(erc20Addrs.l1Addr, IERC20Artifact.abi, l1Signer)
+  l2ERC20 = new ethers.Contract(erc20Addrs.l2Addr, IERC20Artifact.abi, l2Signer)
+  l1Greeter = new ethers.Contract(greeter.l1Greeter, GreeterABI, l1Signer)
+  l2Greeter = new ethers.Contract(greeter.l2Greeter, GreeterABI, l2Signer)
 
 }    // setup
 
 
+const reportGreet = async () => {
+  const l1greet = await l1Greeter["greet()"]()
+  const l2greet = await l2Greeter.greet()
+
+  console.log(`l1greet:${l1greet} `)
+  console.log(`l2greet:${l2greet} `)
+
+  return
+}    // reportGreet
+
+
 const reportBridgeBalances = async () => {
-//   const deposits = (await l1Bridge.deposits(erc20Addrs.l1Addr, erc20Addrs.l2Addr)).toString().slice(0,tokenDecimal)
-  const deposits = (await l1Bridge.deposits(erc20Addrs.l1Addr, erc20Addrs.l2Addr)).toString()
+  const deposits = (await l1Bridge.deposits(erc20Addrs.l1Addr, erc20Addrs.l2Addr)).toString().slice(0,-18)
+  // const deposits = (await l1Bridge.deposits(erc20Addrs.l1Addr, erc20Addrs.l2Addr)).toString()
 
   console.log(`deposits in Bridge : ${deposits} `)
   return
@@ -174,23 +205,13 @@ const reportBridgeBalances = async () => {
 
 
 const reportERC20Balances = async () => {
-//   const l1Balance = (await l1ERC20.balanceOf(ourAddr)).toString().slice(0,tokenDecimal)
-//   const l2Balance = (await l2ERC20.balanceOf(ourAddr)).toString().slice(0,tokenDecimal)
-  const l1Balance = (await l1ERC20.balanceOf(ourAddr)).toString()
-  const l2Balance = (await l2ERC20.balanceOf(ourAddr)).toString()
+  const l1Balance = (await l1ERC20.balanceOf(ourAddr)).toString().slice(0,-18)
+  const l2Balance = (await l2ERC20.balanceOf(ourAddr)).toString().slice(0,-18)
+  // const l1Balance = (await l1ERC20.balanceOf(ourAddr)).toString()
+  // const l2Balance = (await l2ERC20.balanceOf(ourAddr)).toString()
 
   console.log(`ourAddr:${ourAddr} `)
   console.log(`OUTb on L1:${l1Balance}     OUTb on L2:${l2Balance}`)
-
-  let l1symbol = await l1ERC20.symbol()
-  let l1decimals = await l1ERC20.decimals()
-  console.log(`l1symbol:${l1symbol} `)
-  console.log(`l1decimals:${l1decimals} `)
-
-  let l2symbol = await l2ERC20.symbol()
-  let l2decimals = await l2ERC20.decimals()
-  console.log(`l2symbol:${l2symbol} `)
-  console.log(`l2decimals:${l2decimals} `)
 
   if (l1Balance != 0) {
     return
@@ -198,12 +219,13 @@ const reportERC20Balances = async () => {
 
 }    // reportGreet
 
-// const depositAmount = ethers.utils.parseEther("1000000000")
-// const approveAmount = ethers.utils.parseEther("1000000000")
 
+const oneToken = BigInt(1e18)
+// const tenToken = ethers.utils.parseEther("10 ")
 
-const depositAmount = ethers.BigNumber.from("1000000000000000000000000005")
-const approveAmount = ethers.BigNumber.from("1000000000000000000000000005")
+// const depositAmount = ethers.utils.parseEther("60000")
+const depositAmount = ethers.utils.parseEther("1")
+const approveAmount = ethers.utils.parseEther("100000")
 
 // for USDC
 // const depositAmount = ethers.BigNumber.from("5000000000")
@@ -269,7 +291,7 @@ const depositERC20 = async () => {
 }     // depositERC20()
 
 
-const withdrawERC20 = async () => {
+const withdrawERC20 = async (to) => {
   console.log(`\n`)
   console.log("Withdraw ERC20")
   const start = new Date()
@@ -277,10 +299,19 @@ const withdrawERC20 = async () => {
   console.log(`\n`)
 
   const response = await crossChainMessenger.withdrawERC20(
-    erc20Addrs.l1Addr, erc20Addrs.l2Addr, depositAmount)
+    erc20Addrs.l1Addr, erc20Addrs.l2Addr, depositAmount,
+    )
   console.log(`Transaction hash (on L2): ${response.hash}`)
   console.log(`\tFor more information: https://goerli.explorer.tokamak.network/tx/${response.hash}`)
   await response.wait()
+
+  console.log(`\n`)
+  console.log("Checking the current Status")
+  const eventSendMessage = await crossChainMessenger.toCrossChainMessage(response.hash)
+  console.log(`eventSendMessage : `, eventSendMessage)
+  const currentStatus = await crossChainMessenger.getMessageStatus(eventSendMessage)
+  console.log(`currentStatus : `, currentStatus)
+
   console.log(`\n`)
   console.log("Waiting for status to change to IN_CHALLENGE_PERIOD")
   console.log(`Time so far ${(new Date()-start)/1000} seconds`)
@@ -301,26 +332,13 @@ const withdrawERC20 = async () => {
 }     // withdrawERC20()
 
 
+
 const main = async () => {
     await setup()
 
-    let boolERC20Deposit = process.env.testERC20Deposit;
-    let boolERC20Withdraw = process.env.testERC20Withdraw;
-
-    console.log(`\n boolERC20Deposit `,boolERC20Deposit)
-    console.log(`\n boolERC20Withdraw `, boolERC20Withdraw)
-
-    if (boolERC20Deposit) {
-
-      await reportBridgeBalances();
-      await depositERC20()
-      await reportBridgeBalances();
-    }
-    if (boolERC20Withdraw) {
-       await reportBridgeBalances();
-       await withdrawERC20()
-       await reportBridgeBalances();
-    }
+    await reportBridgeBalances();
+    await withdrawERC20()
+    await reportBridgeBalances();
 
 }  // main
 
