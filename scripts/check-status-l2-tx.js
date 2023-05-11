@@ -1,15 +1,11 @@
 #! /usr/local/bin/node
 
-// ERC-20 transfers between L1 and L2 using the Optimism SDK
-
 const ethers = require("ethers")
 // const optimismSDK = require("@eth-optimism/sdk")
 const optimismSDK = require("@zena-park/tokamak-sdk")
 const IERC20Artifact = require("./abis/IERC20.json");
 require('dotenv').config()
 
-// 1. withdraw 할때, 원하는 이벤트가 정상적으로 들어왔는지 체크하면 된다.
-// 2. 해쉬가 맞는지 체크해야 한다.
 
 const MessageDirection = {
   L1_TO_L2: 0,
