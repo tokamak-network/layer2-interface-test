@@ -4,7 +4,7 @@
 
 const ethers = require("ethers")
 // const optimismSDK = require("@eth-optimism/sdk")
-const optimismSDK = require("@zena-park/tokamak-sdk")
+const optimismSDK = require("@tokamak-network/tokamak-sdk")
 const IERC20Artifact = require("./abis/IERC20.json");
 require('dotenv').config()
 
