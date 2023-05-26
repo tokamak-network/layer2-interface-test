@@ -225,7 +225,7 @@ const oneToken = BigInt(1e18)
 
 // const depositAmount = ethers.utils.parseEther("60000")
 const depositAmount = ethers.utils.parseEther("1")
-const approveAmount = ethers.utils.parseEther("100000")
+const approveAmount = ethers.utils.parseEther("1")
 
 // for USDC
 // const depositAmount = ethers.BigNumber.from("5000000000")
