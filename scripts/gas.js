@@ -48,7 +48,7 @@ let l1Signer, l2Signer;
 const getSigners = async () => {
     // const l1RpcProvider = new ethers.providers.JsonRpcProvider(l1Url)
     // const l2RpcProvider = new ethers.providers.JsonRpcProvider(l2Url)
-    const l1RpcProvider =  new ethers.providers.JsonRpcProvider(l1Url)
+    const l1RpcProvider =  optimismSDK.asL2Provider(new ethers.providers.JsonRpcProvider(l1Url))
     const l2RpcProvider = optimismSDK.asL2Provider(new ethers.providers.JsonRpcProvider(l2Url))
 
     const privateKey = process.env.PRIVATE_KEY
@@ -87,9 +87,20 @@ const main = async () => {
 
     let real = {}
 
+    const fakeTxReq1 = await l1Greeter.populateTransaction.setGreeting(greeting)
+    const fakeTx1 = await l1Signer.populateTransaction(fakeTxReq1)
+    console.log("About to get estimates using L1 signer ")
+    let estimated1 = await getEstimates(l1Signer.provider, fakeTx1)
+    console.log('estimated', estimated1)
+    console.log('estimated.totalCost', estimated1.totalCost.toString())
+    console.log('estimated.l1Cost', estimated1.l1Cost.toString())
+    console.log('estimated.l2Cost', estimated1.l2Cost.toString())
+    console.log('estimated.l1Gas', estimated1.l1Gas.toString())
+
+
     const fakeTxReq = await l2Greeter.populateTransaction.setGreeting(greeting)
     const fakeTx = await l2Signer.populateTransaction(fakeTxReq)
-    console.log("About to get estimates")
+    console.log("About to get estimates using L2 signer ")
     let estimated = await getEstimates(l2Signer.provider, fakeTx)
     console.log('estimated', estimated)
     console.log('estimated.totalCost', estimated.totalCost.toString())
