@@ -102,7 +102,7 @@ const main = async () => {
             erc20Addrs.l1Addr,
             erc20Addrs.l2Addr,
             approveAmount,
-            2000000,
+            200000,
             '0x'
         )
     )

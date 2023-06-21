@@ -19,37 +19,46 @@ const l2Url = `https://goerli.optimism.tokamak.network`
 // Contract addresses for OPTb tokens, taken
 // from https://github.com/ethereum-optimism/ethereum-optimism.github.io/blob/master/data/OUTb/data.json
 
+
 const bridge = {
   l1Bridge: "0x7377F3D0F64d7a54Cf367193eb74a052ff8578FD",
   l2Bridge: "0x4200000000000000000000000000000000000010"
 }
 
-// TOS
+const oneToken = BigInt(1e18)
+// const tenToken = ethers.utils.parseEther("10 ")
+
+const depositAmount = ethers.utils.parseEther("1")
+const approveAmount = ethers.utils.parseEther("1")
+
+// for USDC
+// const depositAmount = ethers.BigNumber.from("5000000000")
+// const approveAmount = ethers.BigNumber.from("1000000000000")
+
+const decimals = -18;
+// TON
 const erc20Addrs = {
-  l1Addr: "0x67F3bE272b1913602B191B3A68F7C238A2D81Bb9",
-  l2Addr: "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb"
+  l1Addr: "0x68c1F9620aeC7F2913430aD6daC1bb16D8444F00",
+  l2Addr: "0x7c6b91D9Be155A6Db01f749217d76fF02A7227F2"
 }
 
-// // TON
+// TOS
 // const erc20Addrs = {
-//   l1Addr: "0x68c1F9620aeC7F2913430aD6daC1bb16D8444F00",
-//   l2Addr: "0x7c6b91D9Be155A6Db01f749217d76fF02A7227F2"
+//   l1Addr: "0x67F3bE272b1913602B191B3A68F7C238A2D81Bb9",
+//   l2Addr: ""
 // }
 
 // USDC
 // const erc20Addrs = {
 //   l1Addr: "0x07865c6e87b9f70255377e024ace6630c1eaa37f",
-//   l2Addr: "0x713733bda7F5f9C15fd164242dF4d6292B412bAE"
+//   l2Addr: ""
 // }
 
-const greeter = {
-  l1Greeter: "0x51aB33d511a74aBeFDce2d4AddB92991B73F8937",
-  l2Greeter: "0xDe6b80f4700C2148Ba2aF81640a23E153C007C7F"
-}
-
-// To learn how to deploy an L2 equivalent to an L1 ERC-20 contract,
-// see here:
-// https://github.com/ethereum-optimism/optimism-tutorial/tree/main/standard-bridge-standard-token
+// USDT
+// const erc20Addrs = {
+//   l1Addr: "0xfad6367e97217cc51b4cd838cc086831f81d38c2",
+//   l2Addr: ""
+// }
 
 
 // Global variable because we need them almost everywhere
@@ -131,30 +140,6 @@ const BridgeABI = [
   }
 ]
 
-const GreeterABI = [
-  {
-    "inputs": [
-    ],
-    "name": "greet",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    constant: true,
-    inputs: [
-      { name: "_greeting", type: "string" } ],
-    name: "setGreeting",
-    outputs: [],
-    type: "function",
-  },
-]
 const setup = async() => {
   [l1Signer, l2Signer] = await getSigners()
   ourAddr = l1Signer.address
@@ -171,25 +156,11 @@ const setup = async() => {
   l1Bridge = new ethers.Contract(bridge.l1Bridge, BridgeABI, l1Signer)
   l1ERC20 = new ethers.Contract(erc20Addrs.l1Addr, IERC20Artifact.abi, l1Signer)
   l2ERC20 = new ethers.Contract(erc20Addrs.l2Addr, IERC20Artifact.abi, l2Signer)
-  l1Greeter = new ethers.Contract(greeter.l1Greeter, GreeterABI, l1Signer)
-  l2Greeter = new ethers.Contract(greeter.l2Greeter, GreeterABI, l2Signer)
 
 }    // setup
 
-
-const reportGreet = async () => {
-  const l1greet = await l1Greeter["greet()"]()
-  const l2greet = await l2Greeter.greet()
-
-  console.log(`l1greet:${l1greet} `)
-  console.log(`l2greet:${l2greet} `)
-
-  return
-}    // reportGreet
-
-
 const reportBridgeBalances = async () => {
-  const deposits = (await l1Bridge.deposits(erc20Addrs.l1Addr, erc20Addrs.l2Addr)).toString().slice(0,-18)
+  const deposits = (await l1Bridge.deposits(erc20Addrs.l1Addr, erc20Addrs.l2Addr)).toString().slice(0,decimals)
   // const deposits = (await l1Bridge.deposits(erc20Addrs.l1Addr, erc20Addrs.l2Addr)).toString()
 
   console.log(`deposits in Bridge : ${deposits} `)
@@ -201,8 +172,8 @@ const reportBridgeBalances = async () => {
 
 
 const reportERC20Balances = async () => {
-  const l1Balance = (await l1ERC20.balanceOf(ourAddr)).toString().slice(0,-18)
-  const l2Balance = (await l2ERC20.balanceOf(ourAddr)).toString().slice(0,-18)
+  const l1Balance = (await l1ERC20.balanceOf(ourAddr)).toString().slice(0,decimals)
+  const l2Balance = (await l2ERC20.balanceOf(ourAddr)).toString().slice(0,decimals)
   // const l1Balance = (await l1ERC20.balanceOf(ourAddr)).toString()
   // const l2Balance = (await l2ERC20.balanceOf(ourAddr)).toString()
 
@@ -213,28 +184,8 @@ const reportERC20Balances = async () => {
     return
   }
 
-  /*
-  console.log(`You don't have enough OUTb on L1. Let's call the faucet to fix that`)
-  const tx = (await l1ERC20.faucet())
-  console.log(`Faucet tx: ${tx.hash}`)
-  console.log(`\tMore info: https://goerli.etherscan.io/tx/${tx.hash}`)
-  await tx.wait()
-  const newBalance = (await l1ERC20.balanceOf(ourAddr)).toString().slice(0,-18)
-  console.log(`New L1 OUTb balance: ${newBalance}`)
-  */
 }    // reportGreet
 
-
-const oneToken = BigInt(1e18)
-// const tenToken = ethers.utils.parseEther("10 ")
-
-const depositAmount = ethers.utils.parseEther("1")
-// const depositAmount = ethers.utils.parseEther("1")
-const approveAmount = ethers.utils.parseEther("1")
-
-// for USDC
-// const depositAmount = ethers.BigNumber.from("5000000000")
-// const approveAmount = ethers.BigNumber.from("1000000000000")
 
 
 const allowanceERC20 = async () => {
@@ -280,11 +231,14 @@ const depositERC20 = async () => {
   console.log(`\tMore info: https://goerli.etherscan.io/tx/${allowanceResponse.hash}`)
   console.log(`Time so far ${(new Date()-start)/1000} seconds`)
   console.log(`\n`)
+
   const response = await crossChainMessenger.depositERC20(
     erc20Addrs.l1Addr, erc20Addrs.l2Addr, depositAmount)
   console.log(`Deposit transaction hash (on L1): ${response.hash}`)
   console.log(`\tMore info: https://goerli.etherscan.io/tx/${response.hash}`)
   await response.wait()
+
+  /*
   console.log("Waiting for status to change to RELAYED")
   console.log(`Time so far ${(new Date()-start)/1000} seconds`)
   await crossChainMessenger.waitForMessageStatus(response.hash, optimismSDK.MessageStatus.RELAYED)
@@ -292,6 +246,7 @@ const depositERC20 = async () => {
   console.log(`depositERC20 took ${(new Date()-start)/1000} seconds\n\n`)
   await reportERC20Balances()
   console.log(`\n`)
+  */
 
 }     // depositERC20()
 
@@ -328,75 +283,16 @@ const withdrawERC20 = async () => {
 }     // withdrawERC20()
 
 
-const communicationMessage = async () => {
-  const [l1Signer, l2Signer] = await getSigners()
-  console.log(`\n`)
-
-  await reportGreet()
-  const start = new Date()
-
-  let iface = new ethers.utils.Interface(GreeterABI);
-
-  // Need the l2 address to know which bridge is responsible
-  const sendMessageResponse = await crossChainMessenger.sendMessage(
-    {
-      direction: MessageDirection.L1_TO_L2,
-      target: l2Greeter.address,
-      message: iface.encodeFunctionData("setGreeting(string)", ['Hello           , L1_TO_L2,' +  new Date()])
-    },{
-      l2GasLimit: 200000
-    }
-  );
-  await sendMessageResponse.wait()
-  console.log(`SendMessage given by tx ${sendMessageResponse.hash}`)
-  console.log(`\tMore info: https://goerli.etherscan.io/tx/${sendMessageResponse.hash}`)
-  console.log(`Time so far ${(new Date()-start)/1000} seconds`)
-
-  console.log(`\n`)
-  await crossChainMessenger.waitForMessageStatus(sendMessageResponse.hash, optimismSDK.MessageStatus.RELAYED)
-  console.log(`RELAYED, Time so far ${(new Date()-start)/1000} seconds`)
-
-  await reportGreet()
-  console.log(`\n`)
-
-  const start1 = new Date()
-  const response = await crossChainMessenger.sendMessage(
-    {
-      direction: MessageDirection.L2_TO_L1,
-      target: l1Greeter.address,
-      message: iface.encodeFunctionData("setGreeting(string)",['Nice To Meet You, L2_TO_L1,' +  new Date()])
-    }
-  )
-
-  console.log(`Reply transaction hash (on L1): ${response.hash}`)
-  console.log(`\tMore info: https://goerli.etherscan.io/tx/${response.hash}`)
-
-  await response.wait()
-  console.log("Waiting for status to change to RELAYED")
-  console.log(`Time so far ${(new Date()-start1)/1000} seconds`)
-
-  await crossChainMessenger.waitForMessageStatus(response.hash, optimismSDK.MessageStatus.RELAYED)
-  console.log(`RELAYED, Time so far ${(new Date()-start1)/1000} seconds`)
-
-  console.log(`\n`)
-
-  await reportGreet()
-  // console.log(`\n`)
-  // console.log(`communicationMessage took ${(new Date ()-start)/1000} seconds\n\n`)
-
-}     // communicationMessage()
-
 
 const main = async () => {
     await setup()
 
     let boolERC20Deposit = process.env.testERC20Deposit;
     let boolERC20Withdraw = process.env.testERC20Withdraw;
-    let boolMessageTest = process.env.testMessageTest;
 
-    console.log(`\n boolERC20Deposit `,boolERC20Deposit)
-    console.log(`\n boolERC20Withdraw `, boolERC20Withdraw)
-    console.log(`\n boolMessageTest`, boolMessageTest, `\n`)
+    // console.log(`\n boolERC20Deposit `,boolERC20Deposit)
+    // console.log(`\n boolERC20Withdraw `, boolERC20Withdraw)
+    // console.log(`\n  ` )
 
     if (boolERC20Deposit) {
       // await allowanceERC20()
@@ -412,9 +308,7 @@ const main = async () => {
     //    await withdrawERC20()
     //    await reportBridgeBalances();
     // }
-    // if (boolMessageTest) {
-    //   await communicationMessage();
-    // }
+
 }  // main
 
 main().then(() => process.exit(0))
