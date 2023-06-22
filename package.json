@@ -27,7 +27,7 @@
     "@ethersproject/rlp": "^5.7.0",
     "@ethersproject/transactions": "^5.7.0",
     "@ethersproject/web": "^5.7.1",
-    "@tokamak-network/tokamak-layer2-sdk": "^0.0.3",
+    "@tokamak-network/tokamak-layer2-sdk": "^0.0.4",
     "assert": "^2.0.0",
     "bufio": "^1.2.0",
     "chai": "^4.3.7",

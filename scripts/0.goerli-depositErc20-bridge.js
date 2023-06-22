@@ -29,7 +29,7 @@ const oneToken = BigInt(1e18)
 // const tenToken = ethers.utils.parseEther("10 ")
 
 const depositAmount = ethers.utils.parseEther("1")
-const approveAmount = ethers.utils.parseEther("1")
+const approveAmount = ethers.utils.parseEther("2")
 
 // for USDC
 // const depositAmount = ethers.BigNumber.from("5000000000")
@@ -143,6 +143,7 @@ const BridgeABI = [
 const setup = async() => {
   [l1Signer, l2Signer] = await getSigners()
   ourAddr = l1Signer.address
+  console.log('ourAddr',l1Signer.address);
 
   crossChainMessenger = new optimismSDK.CrossChainMessenger({
       l1ChainId: 5,    // Goerli value, 1 for mainnet
@@ -236,9 +237,9 @@ const depositERC20 = async () => {
     erc20Addrs.l1Addr, erc20Addrs.l2Addr, depositAmount)
   console.log(`Deposit transaction hash (on L1): ${response.hash}`)
   console.log(`\tMore info: https://goerli.etherscan.io/tx/${response.hash}`)
+ /*
   await response.wait()
 
-  /*
   console.log("Waiting for status to change to RELAYED")
   console.log(`Time so far ${(new Date()-start)/1000} seconds`)
   await crossChainMessenger.waitForMessageStatus(response.hash, optimismSDK.MessageStatus.RELAYED)
