@@ -25,23 +25,27 @@ const bridge = {
   l2Bridge: "0x4200000000000000000000000000000000000010"
 }
 
+const oneToken = BigInt(1e18)
+// const tenToken = ethers.utils.parseEther("10 ")
+
+const depositAmount = ethers.BigNumber.from("10000000000")
+const approveAmount = ethers.BigNumber.from("10000000000")
+
 //justin
 const toAddress = "0xB68AA9E398c054da7EBAaA446292f611CA0CD52B"
-const depositAmount = ethers.utils.parseEther("5000")
-const approveAmount = ethers.utils.parseEther("10000")
+const decimals = -6;
 
-const decimals = -18;
-// TON
-// const erc20Addrs = {
-//   l1Addr: "0x68c1F9620aeC7F2913430aD6daC1bb16D8444F00",
-//   l2Addr: "0xFa956eB0c4b3E692aD5a6B2f08170aDE55999ACa"
-// }
-
-// TOS
+// USDC
 const erc20Addrs = {
-  l1Addr: "0x67F3bE272b1913602B191B3A68F7C238A2D81Bb9",
-  l2Addr: "0x6af3cb766d6cd37449bfd321d961a61b0515c1bc"
+  l1Addr: "0x07865c6e87b9f70255377e024ace6630c1eaa37f",
+  l2Addr: "0x9c53338c48181035D96884946C34ea81818F743C"
 }
+
+// USDT
+// const erc20Addrs = {
+//   l1Addr: "0xfad6367e97217cc51b4cd838cc086831f81d38c2",
+//   l2Addr: "0xd1e405F1154BE88aC84f748C1BcE22442B12309F"
+// }
 
 
 // Global variable because we need them almost everywhere

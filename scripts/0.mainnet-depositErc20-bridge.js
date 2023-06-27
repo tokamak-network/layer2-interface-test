@@ -13,35 +13,35 @@ const MessageDirection = {
   L2_TO_L1: 1,
 }
 
-const l1Url = `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY}`
-const l2Url = `https://goerli.optimism.tokamak.network`
-
-// Contract addresses for OPTb tokens, taken
-// from https://github.com/ethereum-optimism/ethereum-optimism.github.io/blob/master/data/OUTb/data.json
+const l1Url = `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`
+const l2Url = `https://rpc.titan.tokamak.network`
 
 
 const bridge = {
-  l1Bridge: "0x7377F3D0F64d7a54Cf367193eb74a052ff8578FD",
+  l1Bridge: "0x59aa194798Ba87D26Ba6bEF80B85ec465F4bbcfD",
   l2Bridge: "0x4200000000000000000000000000000000000010"
 }
 
 //justin
 const toAddress = "0xB68AA9E398c054da7EBAaA446292f611CA0CD52B"
-const depositAmount = ethers.utils.parseEther("5000")
+const depositAmount = ethers.utils.parseEther("1")
 const approveAmount = ethers.utils.parseEther("10000")
 
 const decimals = -18;
+
 // TON
-// const erc20Addrs = {
-//   l1Addr: "0x68c1F9620aeC7F2913430aD6daC1bb16D8444F00",
-//   l2Addr: "0xFa956eB0c4b3E692aD5a6B2f08170aDE55999ACa"
-// }
+const erc20Addrs = {
+  l1Addr: "0x2be5e8c109e2197D077D13A82dAead6a9b3433C5",
+  l2Addr: ""
+}
 
 // TOS
-const erc20Addrs = {
-  l1Addr: "0x67F3bE272b1913602B191B3A68F7C238A2D81Bb9",
-  l2Addr: "0x6af3cb766d6cd37449bfd321d961a61b0515c1bc"
-}
+// const erc20Addrs = {
+//   l1Addr: "0x409c4D8cd5d2924b9bc5509230d16a61289c8153",
+//   l2Addr: ""
+// }
+
+
 
 
 // Global variable because we need them almost everywhere
@@ -129,21 +129,21 @@ const setup = async() => {
   console.log('ourAddr',l1Signer.address);
 
   crossChainMessenger = new optimismSDK.CrossChainMessenger({
-      l1ChainId: 5,    // Goerli value, 1 for mainnet
-      l2ChainId: 5050,  // Goerli value, 10 for mainnet
+      l1ChainId: 1,    // Goerli value, 1 for mainnet
+      l2ChainId: 55004,  // Goerli value, 10 for mainnet
       l1SignerOrProvider: l1Signer,
       l2SignerOrProvider: l2Signer
   })
 
-  // console.log('crossChainMessenger',crossChainMessenger);
-
   l1Bridge = new ethers.Contract(bridge.l1Bridge, BridgeABI, l1Signer)
+
   l1ERC20 = new ethers.Contract(erc20Addrs.l1Addr, IERC20Artifact.abi, l1Signer)
   l2ERC20 = new ethers.Contract(erc20Addrs.l2Addr, IERC20Artifact.abi, l2Signer)
 
 }    // setup
 
 const reportBridgeBalances = async () => {
+  console.log('reportBridgeBalances start');
   const deposits = (await l1Bridge.deposits(erc20Addrs.l1Addr, erc20Addrs.l2Addr)).toString().slice(0,decimals)
   // const deposits = (await l1Bridge.deposits(erc20Addrs.l1Addr, erc20Addrs.l2Addr)).toString()
 
@@ -158,8 +158,6 @@ const reportBridgeBalances = async () => {
 const reportERC20Balances = async () => {
   const l1Balance = (await l1ERC20.balanceOf(ourAddr)).toString().slice(0,decimals)
   const l2Balance = (await l2ERC20.balanceOf(ourAddr)).toString().slice(0,decimals)
-  // const l1Balance = (await l1ERC20.balanceOf(ourAddr)).toString()
-  // const l2Balance = (await l2ERC20.balanceOf(ourAddr)).toString()
 
   console.log(`ourAddr:${ourAddr} `)
   console.log(`OUTb on L1:${l1Balance}     OUTb on L2:${l2Balance}`)
@@ -233,7 +231,6 @@ const depositERC20 = async () => {
   console.log(`depositERC20 took ${(new Date()-start)/1000} seconds\n\n`)
   await reportERC20Balances()
   console.log(`\n`)
-
 
 }     // depositERC20()
 

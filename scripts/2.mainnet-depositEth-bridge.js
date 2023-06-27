@@ -13,24 +13,24 @@ const MessageDirection = {
   L2_TO_L1: 1,
 }
 
-const l1Url = `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY}`
-const l2Url = `https://goerli.optimism.tokamak.network`
-
-// Contract addresses for OPTb tokens, taken
-// from https://github.com/ethereum-optimism/ethereum-optimism.github.io/blob/master/data/OUTb/data.json
-
+const l1Url = `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`
+const l2Url = `https://rpc.titan.tokamak.network`
 
 const bridge = {
-  l1Bridge: "0x7377F3D0F64d7a54Cf367193eb74a052ff8578FD",
+  l1Bridge: "0x59aa194798Ba87D26Ba6bEF80B85ec465F4bbcfD",
   l2Bridge: "0x4200000000000000000000000000000000000010"
 }
 
 let l1RpcProvider;
 
-const oneToken = BigInt(1e18)
-// const tenToken = ethers.utils.parseEther("10 ")
+// to. deterministic deployment proxy
+const toAddress = "0x3fab184622dc19b6109349b94811493bf2a45362"
+const depositAmount = ethers.BigNumber.from("10000000000000000")
 
-const depositAmount = ethers.BigNumber.from("1000000000000000000")
+// to. justin
+// const toAddress = "0xB68AA9E398c054da7EBAaA446292f611CA0CD52B"
+// const depositAmount = ethers.BigNumber.from("140000000000000000")
+
 const approveAmount = ethers.utils.parseEther("1")
 
 const decimals = -18;
@@ -119,8 +119,8 @@ const setup = async() => {
   ourAddr = l1Signer.address
 
   crossChainMessenger = new optimismSDK.CrossChainMessenger({
-      l1ChainId: 5,    // Goerli value, 1 for mainnet
-      l2ChainId: 5050,  // Goerli value, 10 for mainnet
+      l1ChainId: 1,    // Goerli value, 1 for mainnet
+      l2ChainId: 55004,  // Goerli value, 10 for mainnet
       l1SignerOrProvider: l1Signer,
       l2SignerOrProvider: l2Signer
   })
@@ -156,7 +156,10 @@ const depositETH = async () => {
 
   const start = new Date()
 
-  const response = await crossChainMessenger.depositETH(depositAmount)
+  const response = await crossChainMessenger.depositETH(depositAmount,
+    {
+      recipient: toAddress
+    })
   console.log(`Transaction hash (on L1): ${response.hash}`)
   await response.wait()
   console.log("Waiting for status to change to RELAYED")
